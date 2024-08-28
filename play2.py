@@ -22,6 +22,8 @@ class TicTacToeGameState():
 
         self.player = player
 
+        self.print_board()
+
     def __repr__(self):
         ret_string = self.draw_board()
         ret_string += 'Next to move: '
@@ -81,6 +83,18 @@ class TicTacToeGameState():
         x, y = self.map_move_to_board(move)
         return self.board[x, y] == 0
 
+    # def move(self, move):
+    #     x, y = self.map_move_to_board(move)
+    #
+    #     if not self.is_move_legal(move):
+    #         raise ValueError(
+    #             "move {0} on board {1} is not legal".format(move, self.board)
+    #         )
+    #
+    #     new_board = np.copy(self.board)
+    #     new_board[x, y] = self.player
+    #
+    #     return TicTacToeGameState(new_board, self.next_player)
     def move(self, move):
         x, y = self.map_move_to_board(move)
 
@@ -91,6 +105,9 @@ class TicTacToeGameState():
 
         new_board = np.copy(self.board)
         new_board[x, y] = self.player
+
+        print(f"\nMove: {move} by Player {'O' if self.player == 1 else 'X'}")
+        print("Board after move:")
 
         return TicTacToeGameState(new_board, self.next_player)
 
@@ -210,21 +227,165 @@ class TicTacToeGameState():
         print()
 
 
-class Node():
+# class Node():
+#
+#     def __init__(self, state, parent=None):
+#         self.state = state
+#         self.parent = parent
+#         self.children = []
+#
+#         self.visits = 0
+#         self.value = 0
+#
+#
+#     def is_fully_expanded(self):
+#         return len(self.children) == len(self.state.get_legal_actions())
+#
+#
+#     def best_child(self, exploration_weight=1.4):
+#         choices_weights = [
+#             (child.value / child.visits) + exploration_weight * (2 * np.log(self.visits) / child.visits) ** 0.5
+#             for child in self.children
+#         ]
+#         return self.children[np.argmax(choices_weights)]
+#
+#
+#     def expand(self):
+#         #action = [a for a in self.state.get_legal_actions() if a not in [c.state.board for c in self.children]][0]
+#         action = random.sample(self.state.get_legal_actions(),1)[0]
+#         next_state = self.state.move(action)
+#         child_node = Node(next_state, parent=self)
+#         self.children.append(child_node)
+#         return child_node
+#
+#
+#     def rollout(self):
+#         current_env_state = self.env_state
+#         # current_env_state.print_board()
+#         #reward = current_env_state.get_reward()
+#         while not current_env_state.is_game_over():
+#             # find a ransom child state-action node
+#             possible_moves = current_env_state.get_legal_actions()
+#             action = self.rollout_policy(possible_moves)
+#             current_env_state = current_env_state.move(action)
+#
+#         if(current_env_state.game_result == self.env_state.player):
+#             return 1
+#         elif current_env_state.game_result == 0:
+#             return 0.5
+#         else:
+#             return 0
+#
+#     def update(self, value):
+#         self.visits += 1
+#         self.value += value
+#
+#
+#     def backpropagate(self, reward):
+#         self.number_of_visits += 1
+#         # print("n=" + str(self.number_of_visits))
+#
+#         # print("vf=" + str(self.value_function) + ", r=" + str(reward))
+#         self.value_function = self.value_function*(self.n - 1)/self.n + (1/self.n)*reward
+#         # print("new_vf=" + str(self.value_function))
+#
+#         if self.prev_node:
+#             self.prev_node.backpropagate(self.value_function)
+#
+#
+#     def is_expandable(self):
+#         if not self.is_fully_expanded():
+#             return True
+#
+#         ns = [ actions.n  for actions in self.actions ]
+#         ns_min_arg = np.argmin(ns)
+#
+#         if ns[ns_min_arg] > 1:
+#             return False
+#         else:
+#             return True
+#
+#
+#     def is_terminal_node(self):
+#         return self.env_state.is_game_over()
+#
+#
+#     def rollout_policy(self, possible_moves):
+#         return possible_moves[np.random.randint(len(possible_moves))]
+#
+#
+#     def plot_node(self, digraph, draw_node_name="node", first_layer=False):
+#         node_info = self.get_info()
+#         if self.is_terminal_node():
+#             digraph.node(draw_node_name, label=node_info, shape='box')
+#         else:
+#             digraph.node(draw_node_name, label=node_info, shape='oval')
+#
+#         if self.actions:
+#             it = 0
+#             for a in self.actions:
+#                 action_name = draw_node_name + str(it)
+#                 it += 1
+#                 a.plot_node(digraph, action_name, first_layer)
+#                 digraph.edge(draw_node_name, action_name)
+#
+#     def plot_tree(self, first_layer=False):
+#         file_name = "tree" + str(self.digraph_filecount) + ".gv"
+#         self.digraph_filecount += 1
+#         self.digraph = Digraph('g', filename=file_name,
+#             node_attr={'shape': 'record', 'height': '.1', 'fontname': 'Lucida Console'})
+#         self.plot_node(digraph=self.digraph, first_layer=first_layer)
+#         self.digraph.view()
+#
+#     def get_info(self):
+#         # node_info = "vf = " + str(self.value_function) + "\l n = " + str(self.n)
+#         node_info = "vf = " + ("%.5f" % self.value_function) + "\l n = " + str(self.n)
+#         node_info += self.env_state.draw_board()
+#         return node_info
+#
+#
+# class MCTS:
+#     def __init__(self, num_simulations=1000):
+#         self.num_simulations = num_simulations
+#
+#     def search(self, root):
+#         for _ in range(self.num_simulations):
+#             node = self._select(root)
+#             value = self._simulate(node)
+#             self._backpropagate(node, value)
+#         return root.best_child(0).state
+#
+#     def _select(self, node):
+#         while not node.state.is_game_over():
+#             if node.is_fully_expanded():
+#                 node = node.best_child()
+#             else:
+#                 return node.expand()
+#         return node
+#
+#     def _simulate(self, node):
+#         current_state = node.state
+#         while not current_state.is_game_over():
+#             action = random.choice(current_state.get_legal_actions())
+#             current_state = current_state.move(action)
+#         return current_state.game_result
+#
+#     def _backpropagate(self, node, value):
+#         while node is not None:
+#             node.update(value)
+#             node = node.parent
 
+class Node():
     def __init__(self, state, parent=None):
         self.state = state
         self.parent = parent
         self.children = []
-
         self.visits = 0
         self.value = 0
 
-    
     def is_fully_expanded(self):
         return len(self.children) == len(self.state.get_legal_actions())
 
-    
     def best_child(self, exploration_weight=1.4):
         choices_weights = [
             (child.value / child.visits) + exploration_weight * (2 * np.log(self.visits) / child.visits) ** 0.5
@@ -232,100 +393,33 @@ class Node():
         ]
         return self.children[np.argmax(choices_weights)]
 
-    
     def expand(self):
-        #action = [a for a in self.state.get_legal_actions() if a not in [c.state.board for c in self.children]][0]
-        action = random.sample(self.state.get_legal_actions(),1)[0]
+        action = random.sample(self.state.get_legal_actions(), 1)[0]
         next_state = self.state.move(action)
         child_node = Node(next_state, parent=self)
         self.children.append(child_node)
         return child_node
 
-
-    def rollout(self):
-        current_env_state = self.env_state
-        # current_env_state.print_board()
-        #reward = current_env_state.get_reward()
-        while not current_env_state.is_game_over():
-            # find a ransom child state-action node
-            possible_moves = current_env_state.get_legal_actions()
-            action = self.rollout_policy(possible_moves)
-            current_env_state = current_env_state.move(action)
-        
-        if(current_env_state.game_result == self.env_state.player):
-            return 1
-        elif current_env_state.game_result == 0:
-            return 0.5
-        else:
-            return 0
-
     def update(self, value):
         self.visits += 1
         self.value += value
 
+    def plot_first_layer(self, graph, node_id=0):
+        # Create a unique node label for the current node
+        label = f"ID: {node_id}\nValue: {self.value:.2f}\nVisits: {self.visits}"
+        label += f"\n{self.state.draw_board()}"
 
-    def backpropagate(self, reward):
-        self.number_of_visits += 1
-        # print("n=" + str(self.number_of_visits))
-        
-        # print("vf=" + str(self.value_function) + ", r=" + str(reward))
-        self.value_function = self.value_function*(self.n - 1)/self.n + (1/self.n)*reward 
-        # print("new_vf=" + str(self.value_function))           
-        
-        if self.prev_node:
-            self.prev_node.backpropagate(self.value_function)
+        # Add the root node to the graph
+        graph.node(str(node_id), label)
 
-
-    def is_expandable(self):
-        if not self.is_fully_expanded():
-            return True
-        
-        ns = [ actions.n  for actions in self.actions ]
-        ns_min_arg = np.argmin(ns)
-        
-        if ns[ns_min_arg] > 1:
-            return False
-        else:
-            return True
-
-
-    def is_terminal_node(self):
-        return self.env_state.is_game_over()
-
-
-    def rollout_policy(self, possible_moves):        
-        return possible_moves[np.random.randint(len(possible_moves))]
-
-
-    def plot_node(self, digraph, draw_node_name="node", first_layer=False):
-        node_info = self.get_info()
-        if self.is_terminal_node():
-            digraph.node(draw_node_name, label=node_info, shape='box')
-        else:
-            digraph.node(draw_node_name, label=node_info, shape='oval')
-            
-        if self.actions:
-            it = 0
-            for a in self.actions:
-                action_name = draw_node_name + str(it)
-                it += 1
-                a.plot_node(digraph, action_name, first_layer)
-                digraph.edge(draw_node_name, action_name)
-
-    def plot_tree(self, first_layer=False):
-        file_name = "tree" + str(self.digraph_filecount) + ".gv"
-        self.digraph_filecount += 1
-        self.digraph = Digraph('g', filename=file_name,
-            node_attr={'shape': 'record', 'height': '.1', 'fontname': 'Lucida Console'})
-        self.plot_node(digraph=self.digraph, first_layer=first_layer)
-        self.digraph.view()
-    
-    def get_info(self):
-        # node_info = "vf = " + str(self.value_function) + "\l n = " + str(self.n) 
-        node_info = "vf = " + ("%.5f" % self.value_function) + "\l n = " + str(self.n) 
-        node_info += self.env_state.draw_board()
-        return node_info
-
+        # Plot only the first layer of children
+        next_id = node_id + 1
+        for child in self.children:
+            child_label = f"ID: {next_id}\nValue: {child.value:.2f}\nVisits: {child.visits}"
+            child_label += f"\n{child.state.draw_board()}"
+            graph.node(str(next_id), child_label)
+            graph.edge(str(node_id), str(next_id))
+            next_id += 1
 
 class MCTS:
     def __init__(self, num_simulations=1000):
@@ -336,6 +430,7 @@ class MCTS:
             node = self._select(root)
             value = self._simulate(node)
             self._backpropagate(node, value)
+        self.plot_first_layer(root)
         return root.best_child(0).state
 
     def _select(self, node):
@@ -358,6 +453,10 @@ class MCTS:
             node.update(value)
             node = node.parent
 
+    def plot_first_layer(self, root):
+        graph = Digraph()
+        root.plot_first_layer(graph)
+        graph.render('mcts_tree_first_layer', format='png', cleanup=True)
 
 
 game_state = TicTacToeGameState()
@@ -371,7 +470,7 @@ mcts = MCTS(num_simulations=1000)
 while not game_state.is_game_over():
     print("\nCurrent board:")
     game_state.print_board()
-    
+
     if game_state.player == 1:  # Human's turn
         move = None
         while move is None:
@@ -386,6 +485,7 @@ while not game_state.is_game_over():
     else:  # MCTS Agent's turn
         print("MCTS Agent is thinking...")
         root = Node(game_state)
+
         game_state = mcts.search(root)
 
 print("\nFinal board:")
@@ -398,4 +498,11 @@ elif result == -1:
     print("Player X (MCTS) wins!")
 else:
     print("It's a draw!")
+
+# # Example moves
+# moves = [i+1 for i in range(9)]
+#
+# for move in moves:
+#     new = game_state.move(move)
+
 

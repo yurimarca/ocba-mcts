@@ -22,7 +22,7 @@ class TicTacToeGameState():
 
         self.player = player
 
-        self.print_board()
+        #self.print_board()
 
     def __repr__(self):
         ret_string = self.draw_board()
@@ -106,8 +106,8 @@ class TicTacToeGameState():
         new_board = np.copy(self.board)
         new_board[x, y] = self.player
 
-        print(f"\nMove: {move} by Player {'O' if self.player == 1 else 'X'}")
-        print("Board after move:")
+        #print(f"\nMove: {move} by Player {'O' if self.player == 1 else 'X'}")
+        #print("Board after move:")
 
         return TicTacToeGameState(new_board, self.next_player)
 
@@ -204,7 +204,7 @@ class TicTacToeGameState():
         print(self.draw_board())
 
     def print_board_positions(self):
-        pos = 0
+        pos = 1
         for i in range(self.board.shape[0]):
             print()
             if i > 0:
@@ -383,8 +383,16 @@ class Node():
         self.visits = 0
         self.value = 0
 
+        self._untried_actions = None
+
     def is_fully_expanded(self):
-        return len(self.children) == len(self.state.get_legal_actions())
+        return len(self.untried_actions) == 0
+
+    @property
+    def untried_actions(self):
+        if self._untried_actions is None:
+            self._untried_actions = self.state.get_legal_actions()
+        return self._untried_actions
 
     def best_child(self, exploration_weight=1.4):
         choices_weights = [
@@ -394,15 +402,23 @@ class Node():
         return self.children[np.argmax(choices_weights)]
 
     def expand(self):
-        action = random.sample(self.state.get_legal_actions(), 1)[0]
+        # Randomly choose a available action
+        action = random.sample(self.untried_actions, 1)[0]
+        # Create next state based on action move
         next_state = self.state.move(action)
+        # Create node to new state
         child_node = Node(next_state, parent=self)
+        # Remove action from available pool
+        self.untried_actions.remove(action)
+        # Append new node to children list
         self.children.append(child_node)
+        # Return child node
         return child_node
 
     def update(self, value):
         self.visits += 1
         self.value += value
+
 
     def plot_first_layer(self, graph, node_id=0):
         # Create a unique node label for the current node
@@ -422,15 +438,16 @@ class Node():
             next_id += 1
 
 class MCTS:
-    def __init__(self, num_simulations=1000):
+    def __init__(self, player, num_simulations=200):
         self.num_simulations = num_simulations
+        self.player = player
 
     def search(self, root):
-        for _ in range(self.num_simulations):
+        for i in range(self.num_simulations):
             node = self._select(root)
             value = self._simulate(node)
             self._backpropagate(node, value)
-        self.plot_first_layer(root)
+        self.plot_first_layer(root, f"search_iteration")
         return root.best_child(0).state
 
     def _select(self, node):
@@ -441,23 +458,58 @@ class MCTS:
                 return node.expand()
         return node
 
+    def tree_walk(self):
+        """
+        Sample a root-to-leaf path
+        ----------
+        Output:
+        """
+        current_node = self.root_state
+        while not current_node.is_terminal_node():
+            # if not current_node.is_fully_expanded():
+            if current_node.is_expandable():
+                new_state_action = current_node.expand()
+                new_state = new_state_action.expand()
+                return new_state
+            else:
+                current_node = self.tree_policy_selection(current_node)
+
+        return current_node
+
     def _simulate(self, node):
-        current_state = node.state
-        while not current_state.is_game_over():
-            action = random.choice(current_state.get_legal_actions())
-            current_state = current_state.move(action)
-        return current_state.game_result
+        current_env_state = node.state
+        while not current_env_state.is_game_over():
+            # find a random child state-action node
+            possible_moves = current_env_state.get_legal_actions()
+            action = self._rollout(possible_moves)
+            current_env_state = current_env_state.move(action)
+
+        if current_env_state.game_result == node.state.player:
+            return 1
+        elif current_env_state.game_result == 0:
+            return 0.5
+        else:
+            return 0
+
+    def _rollout(self, possible_moves):
+        return possible_moves[np.random.randint(len(possible_moves))]
+
 
     def _backpropagate(self, node, value):
         while node is not None:
             node.update(value)
             node = node.parent
 
-    def plot_first_layer(self, root):
+    def plot_first_layer(self, root, file_name='mcts_tree_first_layer'):
         graph = Digraph()
         root.plot_first_layer(graph)
-        graph.render('mcts_tree_first_layer', format='png', cleanup=True)
+        graph.render(file_name, format='png', cleanup=True)
 
+random_seed = 42
+
+# Set the random seeds for reproducibility
+np.random.seed(random_seed)
+random.seed(random_seed)
 
 game_state = TicTacToeGameState()
 
@@ -465,7 +517,7 @@ print("Welcome to Tic-Tac-Toe!")
 print("The board positions are numbered 1 through 9 as follows:")
 game_state.print_board_positions()
 
-mcts = MCTS(num_simulations=1000)
+mcts = MCTS(player=-1, num_simulations=1000)
 
 while not game_state.is_game_over():
     print("\nCurrent board:")

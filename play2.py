@@ -242,6 +242,64 @@ class TicTacToeGameState():
 #         return possible_moves[np.random.randint(len(possible_moves))]
 #
 
+# class Node():
+#     def __init__(self, state, id=0, depth=0, parent=None):
+#         self._id = id
+#         self.state = state
+#         self.parent = parent
+#         self.children = []
+#         self.visits = 0
+#         self.value = 0
+#         self.depth = depth
+#         self._untried_actions = None
+#         self._state_hash = self.hash_state()
+#
+#     def hash_state(self):
+#         """ Hashes the board state to be used for detecting repeated states. """
+#         return tuple(self.state.board.flatten())
+#
+#
+#     def is_fully_expanded(self):
+#         return len(self.untried_actions) == 0
+#
+#     @property
+#     def untried_actions(self):
+#         if self._untried_actions is None:
+#             self._untried_actions = self.state.get_legal_actions()
+#         return self._untried_actions
+#
+#     def best_child(self, exploration_weight=1.4):
+#         choices_weights = [
+#             (child.value / child.visits) + exploration_weight * (2 * np.log(self.visits) / child.visits) ** 0.5
+#             for child in self.children
+#         ]
+#         return self.children[np.argmax(choices_weights)]
+#
+#     def best_child_random(self):
+#         # Return a random child node
+#         return random.choice(self.children)
+#
+#
+#     def expand(self):
+#         # Randomly choose an available action
+#         action = random.sample(self.untried_actions, 1)[0]
+#         # Create the next state based on the action move
+#         next_state = self.state.move(action)
+#         # Calculate the depth for the new child node
+#         child_depth = self.depth + 1
+#         # Create node to new state
+#         child_node = Node(next_state, action, parent=self, depth=child_depth)
+#         # Remove action from available pool
+#         self.untried_actions.remove(action)
+#         # Append the new node to the children list
+#         self.children.append(child_node)
+#         # Return child node
+#         return child_node
+#
+#     def update(self, value):
+#         self.visits += 1
+#         self.value += value
+
 class Node():
     def __init__(self, state, id=0, depth=0, parent=None):
         self._id = id
@@ -258,7 +316,6 @@ class Node():
         """ Hashes the board state to be used for detecting repeated states. """
         return tuple(self.state.board.flatten())
 
-
     def is_fully_expanded(self):
         return len(self.untried_actions) == 0
 
@@ -269,32 +326,33 @@ class Node():
         return self._untried_actions
 
     def best_child(self, exploration_weight=1.4):
+        """ Use the UCB1 formula to select the best child node. """
         choices_weights = [
-            (child.value / child.visits) + exploration_weight * (2 * np.log(self.visits) / child.visits) ** 0.5
+            (child.value / child.visits) + exploration_weight * np.sqrt(np.log(self.visits) / child.visits)
             for child in self.children
         ]
         return self.children[np.argmax(choices_weights)]
 
-    def best_child_random(self):
-        # Return a random child node
-        return random.choice(self.children)
-
-
     def expand(self):
-        # Randomly choose an available action
-        action = random.sample(self.untried_actions, 1)[0]
-        # Create the next state based on the action move
+        """ Expand by choosing the action with highest priority (win/block logic). """
+        action = self.prioritize_action(self.untried_actions)
         next_state = self.state.move(action)
-        # Calculate the depth for the new child node
         child_depth = self.depth + 1
-        # Create node to new state
         child_node = Node(next_state, action, parent=self, depth=child_depth)
-        # Remove action from available pool
         self.untried_actions.remove(action)
-        # Append the new node to the children list
         self.children.append(child_node)
-        # Return child node
         return child_node
+
+    def prioritize_action(self, actions):
+        """ Prioritize actions that could lead to winning or blocking an opponent's win. """
+        for action in actions:
+            temp_state = self.state.move(action)
+            if temp_state.game_result == self.state.player:  # Winning move
+                return action
+            elif temp_state.game_result == -self.state.player:  # Blocking move
+                return action
+        # If no winning/blocking move, return random
+        return random.choice(actions)
 
     def update(self, value):
         self.visits += 1
@@ -348,6 +406,76 @@ class Node():
             child.plot_full_tree(graph)
 
 
+# class MCTS:
+#     def __init__(self, player, num_simulations=200):
+#         self.num_simulations = num_simulations
+#         self.player = player
+#
+#     def search(self, root):
+#         for i in range(self.num_simulations):
+#             node = self._select(root)
+#             value = self._simulate(node)
+#             self._backpropagate(node, value)
+#         self.plot_first_layer(root, f"search_iteration")
+#         self.plot_full_tree(root)
+#         return root.best_child(0).state
+#
+#     def _select(self, node):
+#         while not node.state.is_game_over():
+#             if node.is_fully_expanded():
+#                 node = node.best_child_random()
+#             else:
+#                 return node.expand()
+#         return node
+#
+#     def tree_walk(self):
+#         """
+#         Sample a root-to-leaf path
+#         ----------
+#         Output:
+#         """
+#         current_node = self.root_state
+#         while not current_node.is_terminal_node():
+#             # if not current_node.is_fully_expanded():
+#             if current_node.is_expandable():
+#                 new_state_action = current_node.expand()
+#                 new_state = new_state_action.expand()
+#                 return new_state
+#             else:
+#                 current_node = self.tree_policy_selection(current_node)
+#
+#         return current_node
+#
+#     def _simulate(self, node):
+#         current_env_state = node.state
+#
+#         while not current_env_state.is_game_over():
+#             # find a random child state-action node
+#             possible_moves = current_env_state.get_legal_actions()
+#             action = self._rollout(possible_moves)
+#             current_env_state = current_env_state.move(action)
+#
+#         if current_env_state.game_result == node.state.player:
+#             return 1
+#         elif current_env_state.game_result == 0:
+#             return 0.1
+#         else:
+#             return -1
+#
+#     def _rollout(self, possible_moves):
+#         return possible_moves[np.random.randint(len(possible_moves))]
+#
+#
+#     def _backpropagate(self, node, value):
+#         while node is not None:
+#             # node.update(value)
+#             # node = node.parent
+#             if node.state.player != self.player:
+#                 value = -value
+#             node.update(value)
+#             node = node.parent
+
+
 class MCTS:
     def __init__(self, player, num_simulations=200):
         self.num_simulations = num_simulations
@@ -358,58 +486,50 @@ class MCTS:
             node = self._select(root)
             value = self._simulate(node)
             self._backpropagate(node, value)
-        self.plot_first_layer(root, f"search_iteration")
         self.plot_full_tree(root)
         return root.best_child(0).state
 
     def _select(self, node):
+        """ Select until we find an unexpanded node or terminal node. """
         while not node.state.is_game_over():
             if node.is_fully_expanded():
-                node = node.best_child_random()
+                node = node.best_child()  # Use UCB1 to select
             else:
                 return node.expand()
         return node
 
-    def tree_walk(self):
-        """
-        Sample a root-to-leaf path
-        ----------
-        Output:
-        """
-        current_node = self.root_state
-        while not current_node.is_terminal_node():
-            # if not current_node.is_fully_expanded():
-            if current_node.is_expandable():
-                new_state_action = current_node.expand()
-                new_state = new_state_action.expand()
-                return new_state
-            else:
-                current_node = self.tree_policy_selection(current_node)
-
-        return current_node
-
     def _simulate(self, node):
+        """ Simulate a random rollout from the node. """
         current_env_state = node.state
+
         while not current_env_state.is_game_over():
-            # find a random child state-action node
             possible_moves = current_env_state.get_legal_actions()
             action = self._rollout(possible_moves)
             current_env_state = current_env_state.move(action)
 
-        if current_env_state.game_result == node.state.player:
+        if current_env_state.game_result == -node.state.player:
             return 1
         elif current_env_state.game_result == 0:
             return 0.5
         else:
-            return 0
+            return -1
 
     def _rollout(self, possible_moves):
-        return possible_moves[np.random.randint(len(possible_moves))]
-
+        """ Improve rollout policy with some heuristic (random with preference for center). """
+        if 5 in possible_moves:  # If center is available, prioritize it
+            return 5
+        return random.choice(possible_moves)
 
     def _backpropagate(self, node, value):
+        """ Backpropagate and negate value for the opponent's turn. """
+        # while node is not None:
+        #     if node.state.player != self.player:
+        #         value = -value
+        #     node.update(value)
+        #     node = node.parent
         while node is not None:
             node.update(value)
+            value = -value
             node = node.parent
 
     def plot_first_layer(self, root, file_name='mcts_tree_first_layer'):
@@ -475,11 +595,11 @@ class MCTS:
 #     new = game_state.move(move)
 
 
-random_seed = 42
+#random_seed = 42
 
 # Set the random seeds for reproducibility
-np.random.seed(random_seed)
-random.seed(random_seed)
+#np.random.seed(random_seed)
+#random.seed(random_seed)
 
 # Initialize game state with player X (-1) moving first
 game_state = TicTacToeGameState(player=-1)
@@ -488,7 +608,7 @@ print("Welcome to Tic-Tac-Toe!")
 print("The board positions are numbered 1 through 9 as follows:")
 game_state.print_board_positions()
 
-mcts = MCTS(player=-1, num_simulations=20)
+mcts = MCTS(player=-1, num_simulations=1000)
 
 while not game_state.is_game_over():
     print("\nCurrent board:")
